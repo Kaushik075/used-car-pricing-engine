@@ -1,0 +1,1040 @@
+{
+  "trained_at": "2026-11-18T04:56:44+00:00",
+  "versions": {
+    "sklearn": "1.9.1",
+    "lightgbm": "4.7.0"
+  },
+  "data": {
+    "raw_rows": 15915,
+    "exact_duplicates": 1673,
+    "clean_rows": 14242,
+    "missing_values": 0,
+    "price_skew": 1.2684753766983417,
+    "log_price_skew": -0.03548951812904353,
+    "fractional_km_rows": 875,
+    "fractional_km_top_values": {
+      "1,647.36": 841,
+      "18,035.13": 33,
+      "41,748.58": 1
+    },
+    "age_range": [
+      0,
+      3
+    ]
+  },
+  "split": {
+    "train_rows": 11393,
+    "test_rows": 2849,
+    "random_state": 42
+  },
+  "band_edges": [
+    11490.0,
+    15500.0,
+    18762.999999999996,
+    22989.6
+  ],
+  "band_labels": [
+    "under \u20ac11,490",
+    "\u20ac11,490\u2013\u20ac15,500",
+    "\u20ac15,500\u2013\u20ac18,763",
+    "\u20ac18,763\u2013\u20ac22,990",
+    "over \u20ac22,990"
+  ],
+  "selected_model": "lightgbm",
+  "best_linear_model": "lasso",
+  "selection_rule": "Selection rule, fixed BEFORE tuning results were seen:\n\n1. lowest cross-validated MAPE wins;\n2. but if the best boosting model is within one fold-std of LightGBM, take\n   LightGBM: it is faster and has exact per-car explanations built in\n   (pred_contrib = TreeSHAP), so the app needs no extra explanation library.",
+  "cv_comparison": [
+    {
+      "model": "hist_gradient_boosting",
+      "family": "boosting",
+      "cv_mape_pct": 5.233183424600302,
+      "cv_mape_std": 0.08998263634586588,
+      "cv_mae_eur": 952.6819872391728,
+      "cv_r2": 0.956994950833314,
+      "search_minutes": 3.454244156678518,
+      "best_params": "{\"min_samples_leaf\": 10, \"max_leaf_nodes\": 63, \"max_iter\": 1000, \"max_features\": 0.7, \"learning_rate\": 0.03, \"l2_regularization\": 1.0}"
+    },
+    {
+      "model": "lightgbm",
+      "family": "boosting",
+      "cv_mape_pct": 5.278392454438185,
+      "cv_mape_std": 0.0986062549523679,
+      "cv_mae_eur": 965.112580066471,
+      "cv_r2": 0.9550319250184707,
+      "search_minutes": 1.087647545337677,
+      "best_params": "{\"reg_lambda\": 1.0, \"num_leaves\": 63, \"n_estimators\": 1000, \"min_child_samples\": 10, \"learning_rate\": 0.03, \"colsample_bytree\": 1.0}"
+    },
+    {
+      "model": "lasso",
+      "family": "linear",
+      "cv_mape_pct": 7.825540264413886,
+      "cv_mape_std": 0.24917336967239678,
+      "cv_mae_eur": 1459.5088887101394,
+      "cv_r2": 0.9072967444730485,
+      "search_minutes": 0.12312537431716919,
+      "best_params": "{\"alpha\": 0.0001}"
+    },
+    {
+      "model": "ridge",
+      "family": "linear",
+      "cv_mape_pct": 7.833677952004607,
+      "cv_mape_std": 0.24472846132285142,
+      "cv_mae_eur": 1460.313927581792,
+      "cv_r2": 0.9077747716324044,
+      "search_minutes": 0.1234609882036845,
+      "best_params": "{\"alpha\": 1}"
+    }
+  ],
+  "oof_metrics": {
+    "boosting": {
+      "r2": 0.9550885470628416,
+      "mae_eur": 965.1113086132193,
+      "mape_pct": 5.278375369335136,
+      "median_ape_pct": 3.7340550291919636,
+      "n": 11393
+    },
+    "linear": {
+      "r2": 0.907304475043063,
+      "mae_eur": 1459.5035606602642,
+      "mape_pct": 7.825500464286632,
+      "median_ape_pct": 5.964442055385923,
+      "n": 11393
+    }
+  },
+  "cv_errors_by_band": {
+    "linear": [
+      {
+        "band": "under \u20ac11,490",
+        "n": 2275,
+        "mape_pct": 8.891882940123068,
+        "mae_eur": 823.6596899917034,
+        "median_bias_pct": 3.5447745039854754
+      },
+      {
+        "band": "\u20ac11,490\u2013\u20ac15,500",
+        "n": 2263,
+        "mape_pct": 7.494498009265213,
+        "mae_eur": 1024.8743825554614,
+        "median_bias_pct": -0.2836609677769249
+      },
+      {
+        "band": "\u20ac15,500\u2013\u20ac18,763",
+        "n": 2298,
+        "mape_pct": 6.696985565757441,
+        "mae_eur": 1140.8870279452892,
+        "median_bias_pct": -0.14949600476986302
+      },
+      {
+        "band": "\u20ac18,763\u2013\u20ac22,990",
+        "n": 2278,
+        "mape_pct": 6.4211183267059235,
+        "mae_eur": 1336.010832667044,
+        "median_bias_pct": 0.17481262404195544
+      },
+      {
+        "band": "over \u20ac22,990",
+        "n": 2279,
+        "mape_pct": 9.631357493428593,
+        "mae_eur": 2970.520613038374,
+        "median_bias_pct": -2.7405444159970047
+      }
+    ],
+    "boosting": [
+      {
+        "band": "under \u20ac11,490",
+        "n": 2275,
+        "mape_pct": 6.0449236430530595,
+        "mae_eur": 548.626399768824,
+        "median_bias_pct": 0.02090844409171507
+      },
+      {
+        "band": "\u20ac11,490\u2013\u20ac15,500",
+        "n": 2263,
+        "mape_pct": 5.213241529317807,
+        "mae_eur": 714.1681441050797,
+        "median_bias_pct": 0.3933633831392047
+      },
+      {
+        "band": "\u20ac15,500\u2013\u20ac18,763",
+        "n": 2298,
+        "mape_pct": 4.831193853958672,
+        "mae_eur": 823.5811265192663,
+        "median_bias_pct": -0.3152628720974111
+      },
+      {
+        "band": "\u20ac18,763\u2013\u20ac22,990",
+        "n": 2278,
+        "mape_pct": 4.298881024251152,
+        "mae_eur": 889.5636248854406,
+        "median_bias_pct": -0.5184122392199936
+      },
+      {
+        "band": "over \u20ac22,990",
+        "n": 2279,
+        "mape_pct": 6.007823284072901,
+        "mae_eur": 1848.2712607355113,
+        "median_bias_pct": -1.3625228362002197
+      }
+    ]
+  },
+  "range": {
+    "method": "conformalized quantile regression, per price band",
+    "quantiles": [
+      0.1,
+      0.9
+    ],
+    "corrections_log": [
+      0.01856616911541842,
+      0.02184305454517954,
+      0.012711942452153124,
+      0.013647740246009121,
+      0.022467105750266114
+    ],
+    "oof_raw_coverage": [
+      {
+        "band": "all",
+        "by_estimate": 0.6469762134644079,
+        "by_actual": 0.6469762134644079,
+        "mean_width_pct": 13.290288855639485,
+        "n": 11393
+      },
+      {
+        "band": "under \u20ac11,490",
+        "by_estimate": 0.6327657616198803,
+        "by_actual": 0.6043956043956044,
+        "mean_width_pct": 12.173183106569923,
+        "n": 2173
+      },
+      {
+        "band": "\u20ac11,490\u2013\u20ac15,500",
+        "by_estimate": 0.6405797101449275,
+        "by_actual": 0.6707909854175873,
+        "mean_width_pct": 14.189510556963636,
+        "n": 2415
+      },
+      {
+        "band": "\u20ac15,500\u2013\u20ac18,763",
+        "by_estimate": 0.6601049868766404,
+        "by_actual": 0.6592689295039165,
+        "mean_width_pct": 12.201975986193721,
+        "n": 2286
+      },
+      {
+        "band": "\u20ac18,763\u2013\u20ac22,990",
+        "by_estimate": 0.6666666666666666,
+        "by_actual": 0.6769095697980685,
+        "mean_width_pct": 12.382604759377017,
+        "n": 2298
+      },
+      {
+        "band": "over \u20ac22,990",
+        "by_estimate": 0.6339486717694732,
+        "by_actual": 0.6235190873189995,
+        "mean_width_pct": 15.46480108292201,
+        "n": 2221
+      }
+    ]
+  },
+  "test_metrics": {
+    "r2": 0.9552703299727716,
+    "mae_eur": 937.6370657778633,
+    "mape_pct": 5.068428291260096,
+    "median_ape_pct": 3.3776888625436152,
+    "n": 2849
+  },
+  "test_metrics_linear": {
+    "r2": 0.9051807608506756,
+    "mae_eur": 1443.8788962836006,
+    "mape_pct": 7.601665231782524,
+    "median_ape_pct": 5.746711518580339,
+    "n": 2849
+  },
+  "test_errors_by_band": {
+    "linear": [
+      {
+        "band": "under \u20ac11,490",
+        "n": 533,
+        "mape_pct": 8.587664619366198,
+        "mae_eur": 798.0718539043488,
+        "median_bias_pct": 3.3160053728278056
+      },
+      {
+        "band": "\u20ac11,490\u2013\u20ac15,500",
+        "n": 606,
+        "mape_pct": 7.324457319446317,
+        "mae_eur": 1001.3571828584123,
+        "median_bias_pct": -0.42881860893161106
+      },
+      {
+        "band": "\u20ac15,500\u2013\u20ac18,763",
+        "n": 537,
+        "mape_pct": 6.101341535046494,
+        "mae_eur": 1038.124166772501,
+        "median_bias_pct": 0.03265751719401685
+      },
+      {
+        "band": "\u20ac18,763\u2013\u20ac22,990",
+        "n": 580,
+        "mape_pct": 6.346909829827011,
+        "mae_eur": 1317.0847471241289,
+        "median_bias_pct": -0.13144092137399777
+      },
+      {
+        "band": "over \u20ac22,990",
+        "n": 593,
+        "mape_pct": 9.584603308637648,
+        "mae_eur": 2968.017527284882,
+        "median_bias_pct": -2.137230514797216
+      }
+    ],
+    "boosting": [
+      {
+        "band": "under \u20ac11,490",
+        "n": 533,
+        "mape_pct": 5.842269425322377,
+        "mae_eur": 529.6860530598235,
+        "median_bias_pct": 0.01086443596778856
+      },
+      {
+        "band": "\u20ac11,490\u2013\u20ac15,500",
+        "n": 606,
+        "mape_pct": 5.144591088256542,
+        "mae_eur": 703.2791471035982,
+        "median_bias_pct": 0.3811785631938503
+      },
+      {
+        "band": "\u20ac15,500\u2013\u20ac18,763",
+        "n": 537,
+        "mape_pct": 4.490116646826069,
+        "mae_eur": 765.7138210571607,
+        "median_bias_pct": -0.6455699477874458
+      },
+      {
+        "band": "\u20ac18,763\u2013\u20ac22,990",
+        "n": 580,
+        "mape_pct": 4.175197750357195,
+        "mae_eur": 863.8829444509145,
+        "median_bias_pct": -0.4743736702369773
+      },
+      {
+        "band": "over \u20ac22,990",
+        "n": 593,
+        "mape_pct": 5.692399770770575,
+        "mae_eur": 1771.631941460777,
+        "median_bias_pct": -1.0850233374189193
+      }
+    ]
+  },
+  "test_range_coverage": [
+    {
+      "band": "all",
+      "by_estimate": 0.8241488241488242,
+      "by_actual": 0.8241488241488242,
+      "mean_width_pct": 17.06864887897211,
+      "n": 2849
+    },
+    {
+      "band": "under \u20ac11,490",
+      "by_estimate": 0.8087121212121212,
+      "by_actual": 0.7879924953095685,
+      "mean_width_pct": 16.17235999340443,
+      "n": 528
+    },
+    {
+      "band": "\u20ac11,490\u2013\u20ac15,500",
+      "by_estimate": 0.8369384359400999,
+      "by_actual": 0.8465346534653465,
+      "mean_width_pct": 18.861737813059776,
+      "n": 601
+    },
+    {
+      "band": "\u20ac15,500\u2013\u20ac18,763",
+      "by_estimate": 0.8214936247723132,
+      "by_actual": 0.8342644320297952,
+      "mean_width_pct": 14.64452437981115,
+      "n": 549
+    },
+    {
+      "band": "\u20ac18,763\u2013\u20ac22,990",
+      "by_estimate": 0.8282828282828283,
+      "by_actual": 0.8327586206896552,
+      "mean_width_pct": 15.299831992021685,
+      "n": 594
+    },
+    {
+      "band": "over \u20ac22,990",
+      "by_estimate": 0.8232235701906413,
+      "by_actual": 0.8161888701517707,
+      "mean_width_pct": 20.148572038557834,
+      "n": 577
+    }
+  ],
+  "test_top_end": {
+    "threshold_eur": 40000,
+    "n": 35,
+    "linear": {
+      "share_under_estimated": 0.6571428571428571,
+      "median_bias_pct": -6.304537216831528
+    },
+    "boosting": {
+      "share_under_estimated": 0.6571428571428571,
+      "median_bias_pct": -3.498385970902125
+    }
+  },
+  "rules": {
+    "high_price_threshold": 21900.0,
+    "oof_mean_width_pct": {
+      "normal": 16.267878238224668,
+      "high": 18.761172985709386
+    },
+    "range_coverage_target": 0.8,
+    "show_high_price_warning": true
+  },
+  "model_file_kb": 5815.7,
+  "app": {
+    "categories": {
+      "make_model": [
+        "Audi A1",
+        "Audi A3",
+        "Opel Astra",
+        "Opel Corsa",
+        "Opel Insignia",
+        "Renault Clio",
+        "Renault Espace"
+      ],
+      "body_type": [
+        "Compact",
+        "Off-Road",
+        "Sedans",
+        "Station wagon",
+        "Transporter",
+        "Van"
+      ],
+      "vat": [
+        "Price negotiable",
+        "VAT deductible"
+      ],
+      "Type": [
+        "Demonstration",
+        "Employee's car",
+        "New",
+        "Pre-registered",
+        "Used"
+      ],
+      "Fuel": [
+        "Benzine",
+        "Diesel",
+        "LPG/CNG"
+      ],
+      "Paint_Type": [
+        "Metallic",
+        "Uni/basic"
+      ],
+      "Upholstery_type": [
+        "Cloth",
+        "Part/Full Leather"
+      ],
+      "Gearing_Type": [
+        "Automatic",
+        "Manual",
+        "Semi-automatic"
+      ],
+      "Drive_chain": [
+        "4WD",
+        "front"
+      ]
+    },
+    "ranges": {
+      "Gears": [
+        5.0,
+        8.0
+      ],
+      "age": [
+        0.0,
+        3.0
+      ],
+      "Previous_Owners": [
+        0.0,
+        4.0
+      ],
+      "hp_kW": [
+        40.0,
+        294.0
+      ],
+      "Inspection_new": [
+        0.0,
+        1.0
+      ],
+      "Displacement_cc": [
+        890.0,
+        2967.0
+      ],
+      "Weight_kg": [
+        840.0,
+        2471.0
+      ],
+      "cons_comb": [
+        3.0,
+        9.1
+      ],
+      "km": [
+        0.0,
+        317000.0
+      ]
+    },
+    "equipment": {
+      "Comfort_Convenience": [
+        "Air conditioning",
+        "Armrest",
+        "Automatic climate control",
+        "Auxiliary heating",
+        "Cruise control",
+        "Electric tailgate",
+        "Electrical side mirrors",
+        "Electrically adjustable seats",
+        "Electrically heated windshield",
+        "Heads-up display",
+        "Heated steering wheel",
+        "Hill Holder",
+        "Keyless central door lock",
+        "Leather steering wheel",
+        "Light sensor",
+        "Lumbar support",
+        "Massage seats",
+        "Multi-function steering wheel",
+        "Navigation system",
+        "Panorama roof",
+        "Park Distance Control",
+        "Parking assist system camera",
+        "Parking assist system self-steering",
+        "Parking assist system sensors front",
+        "Parking assist system sensors rear",
+        "Power windows",
+        "Rain sensor",
+        "Seat heating",
+        "Seat ventilation",
+        "Split rear seats",
+        "Start-stop system",
+        "Sunroof",
+        "Tinted windows"
+      ],
+      "Entertainment_Media": [
+        "Bluetooth",
+        "CD player",
+        "Digital radio",
+        "Hands-free equipment",
+        "MP3",
+        "On-board computer",
+        "Radio",
+        "Sound system",
+        "USB"
+      ],
+      "Extras": [
+        "Alloy wheels",
+        "Cab or rented Car",
+        "Catalytic Converter",
+        "Roof rack",
+        "Shift paddles",
+        "Ski bag",
+        "Sport package",
+        "Sport seats",
+        "Sport suspension",
+        "Touch screen",
+        "Trailer hitch",
+        "Voice Control",
+        "Winter tyres"
+      ],
+      "Safety_Security": [
+        "ABS",
+        "Adaptive Cruise Control",
+        "Adaptive headlights",
+        "Alarm system",
+        "Blind spot monitor",
+        "Central door lock",
+        "Central door lock with remote control",
+        "Daytime running lights",
+        "Driver drowsiness detection",
+        "Driver-side airbag",
+        "Electronic stability control",
+        "Emergency brake assistant",
+        "Emergency system",
+        "Fog lights",
+        "Head airbag",
+        "Immobilizer",
+        "Isofix",
+        "LED Daytime Running Lights",
+        "LED Headlights",
+        "Lane departure warning system",
+        "Passenger-side airbag",
+        "Power steering",
+        "Rear airbag",
+        "Side airbag",
+        "Tire pressure monitoring system",
+        "Traction control",
+        "Traffic sign recognition",
+        "Xenon headlights"
+      ]
+    },
+    "km_by_age": {
+      "0": [
+        1.0,
+        9000.0
+      ],
+      "1": [
+        716.5,
+        34522.0
+      ],
+      "2": [
+        8934.5,
+        96000.0
+      ],
+      "3": [
+        23304.95,
+        152000.0
+      ]
+    },
+    "defaults": {
+      "Audi A1": {
+        "make_model": "Audi A1",
+        "body_type": "Sedans",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Benzine",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Cloth",
+        "Gearing_Type": "Manual",
+        "Drive_chain": "front",
+        "Gears": 6.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 70.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 999.0,
+        "Weight_kg": 1180.0,
+        "cons_comb": 4.4,
+        "km": 13525.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Armrest",
+            "Automatic climate control",
+            "Electrical side mirrors",
+            "Leather steering wheel",
+            "Light sensor",
+            "Multi-function steering wheel",
+            "Park Distance Control",
+            "Parking assist system sensors rear",
+            "Power windows",
+            "Rain sensor",
+            "Seat heating",
+            "Start-stop system"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "CD player",
+            "Hands-free equipment",
+            "MP3",
+            "On-board computer",
+            "Radio"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Fog lights",
+            "Immobilizer",
+            "Isofix",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control"
+          ]
+        }
+      },
+      "Audi A3": {
+        "make_model": "Audi A3",
+        "body_type": "Sedans",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Diesel",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Cloth",
+        "Gearing_Type": "Manual",
+        "Drive_chain": "front",
+        "Gears": 6.0,
+        "age": 2.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 85.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1598.0,
+        "Weight_kg": 1360.0,
+        "cons_comb": 4.0,
+        "km": 25111.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Armrest",
+            "Automatic climate control",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Leather steering wheel",
+            "Multi-function steering wheel",
+            "Navigation system",
+            "Park Distance Control",
+            "Parking assist system sensors rear",
+            "Power windows",
+            "Rain sensor",
+            "Start-stop system"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "CD player",
+            "Hands-free equipment",
+            "On-board computer",
+            "Radio"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Immobilizer",
+            "Isofix",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control",
+            "Xenon headlights"
+          ]
+        }
+      },
+      "Opel Astra": {
+        "make_model": "Opel Astra",
+        "body_type": "Station wagon",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Benzine",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Cloth",
+        "Gearing_Type": "Manual",
+        "Drive_chain": "front",
+        "Gears": 6.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 92.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1400.0,
+        "Weight_kg": 1360.0,
+        "cons_comb": 4.5,
+        "km": 25104.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Armrest",
+            "Automatic climate control",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Hill Holder",
+            "Leather steering wheel",
+            "Light sensor",
+            "Multi-function steering wheel",
+            "Navigation system",
+            "Park Distance Control",
+            "Parking assist system sensors front",
+            "Parking assist system sensors rear",
+            "Power windows",
+            "Rain sensor",
+            "Seat heating",
+            "Start-stop system"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "Hands-free equipment",
+            "On-board computer",
+            "Radio",
+            "USB"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Fog lights",
+            "Immobilizer",
+            "Isofix",
+            "LED Daytime Running Lights",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control"
+          ]
+        }
+      },
+      "Opel Corsa": {
+        "make_model": "Opel Corsa",
+        "body_type": "Compact",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Benzine",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Cloth",
+        "Gearing_Type": "Manual",
+        "Drive_chain": "front",
+        "Gears": 5.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 66.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1398.0,
+        "Weight_kg": 1163.0,
+        "cons_comb": 5.4,
+        "km": 16480.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Hill Holder",
+            "Multi-function steering wheel",
+            "Power windows"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "Hands-free equipment",
+            "MP3",
+            "On-board computer",
+            "Radio",
+            "USB"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Fog lights",
+            "Immobilizer",
+            "Isofix",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control"
+          ]
+        }
+      },
+      "Opel Insignia": {
+        "make_model": "Opel Insignia",
+        "body_type": "Station wagon",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Diesel",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Part/Full Leather",
+        "Gearing_Type": "Automatic",
+        "Drive_chain": "front",
+        "Gears": 6.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 121.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1598.0,
+        "Weight_kg": 1503.0,
+        "cons_comb": 5.6,
+        "km": 24914.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Armrest",
+            "Automatic climate control",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Hill Holder",
+            "Leather steering wheel",
+            "Light sensor",
+            "Multi-function steering wheel",
+            "Navigation system",
+            "Park Distance Control",
+            "Parking assist system camera",
+            "Parking assist system sensors front",
+            "Parking assist system sensors rear",
+            "Power windows",
+            "Rain sensor",
+            "Seat heating",
+            "Start-stop system"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "Hands-free equipment",
+            "On-board computer",
+            "Radio",
+            "USB"
+          ],
+          "Extras": [
+            "Alloy wheels",
+            "Roof rack",
+            "Touch screen"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Fog lights",
+            "Immobilizer",
+            "Isofix",
+            "LED Daytime Running Lights",
+            "Lane departure warning system",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control"
+          ]
+        }
+      },
+      "Renault Clio": {
+        "make_model": "Renault Clio",
+        "body_type": "Sedans",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Benzine",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Cloth",
+        "Gearing_Type": "Manual",
+        "Drive_chain": "front",
+        "Gears": 5.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 56.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1197.0,
+        "Weight_kg": 1162.0,
+        "cons_comb": 5.0,
+        "km": 19888.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Multi-function steering wheel",
+            "Power windows"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "Hands-free equipment",
+            "On-board computer",
+            "Radio",
+            "USB"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Fog lights",
+            "Immobilizer",
+            "Isofix",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control"
+          ]
+        }
+      },
+      "Renault Espace": {
+        "make_model": "Renault Espace",
+        "body_type": "Van",
+        "vat": "VAT deductible",
+        "Type": "Used",
+        "Fuel": "Diesel",
+        "Paint_Type": "Metallic",
+        "Upholstery_type": "Part/Full Leather",
+        "Gearing_Type": "Automatic",
+        "Drive_chain": "front",
+        "Gears": 6.0,
+        "age": 1.0,
+        "Previous_Owners": 1.0,
+        "hp_kW": 118.0,
+        "Inspection_new": 0.0,
+        "Displacement_cc": 1598.0,
+        "Weight_kg": 1734.0,
+        "cons_comb": 4.7,
+        "km": 19505.0,
+        "equipment": {
+          "Comfort_Convenience": [
+            "Air conditioning",
+            "Automatic climate control",
+            "Cruise control",
+            "Electrical side mirrors",
+            "Electrically adjustable seats",
+            "Leather steering wheel",
+            "Light sensor",
+            "Multi-function steering wheel",
+            "Navigation system",
+            "Park Distance Control",
+            "Parking assist system camera",
+            "Parking assist system sensors front",
+            "Parking assist system sensors rear",
+            "Power windows",
+            "Rain sensor",
+            "Seat heating",
+            "Start-stop system"
+          ],
+          "Entertainment_Media": [
+            "Bluetooth",
+            "Hands-free equipment",
+            "On-board computer",
+            "Radio"
+          ],
+          "Extras": [
+            "Alloy wheels"
+          ],
+          "Safety_Security": [
+            "ABS",
+            "Blind spot monitor",
+            "Central door lock",
+            "Daytime running lights",
+            "Driver-side airbag",
+            "Electronic stability control",
+            "Immobilizer",
+            "Isofix",
+            "LED Daytime Running Lights",
+            "LED Headlights",
+            "Passenger-side airbag",
+            "Power steering",
+            "Side airbag",
+            "Tire pressure monitoring system",
+            "Traction control",
+            "Traffic sign recognition"
+          ]
+        }
+      }
+    }
+  }
+}

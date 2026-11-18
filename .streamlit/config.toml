@@ -1,0 +1,23 @@
+# App theme. One accent colour (blue); separate light and dark palettes so both stay readable.
+# Streamlit follows the visitor's system setting; they can also switch in the app menu.
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFontSizes = ["1.55rem", "1.25rem", "1.1rem"]
+headingFontWeights = [700, 600, 600]
+baseRadius = "0.6rem"
+
+[theme.light]
+primaryColor = "#2a78d6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f3f5f8"
+textColor = "#15181c"
+
+[theme.dark]
+primaryColor = "#5598e7"
+backgroundColor = "#111418"
+secondaryBackgroundColor = "#1c2128"
+textColor = "#e7e9ec"
+
+[client]
+toolbarMode = "minimal"   # hide developer menu items for visitors
