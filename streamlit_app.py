@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from src.config import LIST_COLUMNS
-from src.predict import deal_check, depreciation_grid, estimate, explain, is_high_price, load_metadata, range_pct
+from src.predict import deal_check, depreciation_grid, estimate, explain, high_price_note, is_high_price, load_metadata, range_pct
 
 st.set_page_config(page_title="Used Car Pricing Engine", page_icon="🚗", layout="centered")
 
@@ -133,11 +133,8 @@ with tab_price:
     est, low, high = res["estimate"], res["low"], res["high"]
     lo_pct, hi_pct = range_pct(est, low, high)
     high_price = is_high_price(est, rules)
-    # One warning text, built from THIS car's own range, used in every tab.
-    high_price_note = (
-        f"High-priced car: above {eur(rules['high_price_threshold'])} the model has fewer examples, "
-        f"so ranges are wider. This car's range is {lo_pct:+.0f}% to {hi_pct:+.0f}% around the estimate."
-    )
+    # One warning text, built from THIS car's own range, used in every tab (and by the API).
+    warning_text = high_price_note(est, low, high, rules)
 
     with result_slot:
         with st.container(border=True):
@@ -145,7 +142,7 @@ with tab_price:
             st.markdown(f"Likely range **{eur(low)} – {eur(high)}**")
             st.caption("About 8 in 10 comparable cars are listed within this range.")
             if high_price:
-                st.warning(high_price_note, icon="⚠️")
+                st.warning(warning_text, icon="⚠️")
 
 # ---------------------------------------------------------------- Tab 2: why this price
 with tab_why:
@@ -225,7 +222,7 @@ with tab_deal:
             }[result["verdict"]]
             st.caption(advice)
             if high_price:
-                st.caption(f"⚠️ {high_price_note}")
+                st.caption(f"⚠️ {warning_text}")
 
 # ---------------------------------------------------------------- Tab 4: how it works
 with tab_info:

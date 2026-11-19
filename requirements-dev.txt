@@ -1,6 +1,10 @@
-# Extra tools for notebooks and tests. Install with: pip install -r requirements-dev.txt
+# Everything for local work: app + API + training/experiment tracking + tests + notebooks.
+# Install with: pip install -r requirements-dev.txt
 -r requirements.txt
-matplotlib==3.11.2
+-r requirements-api.txt
+mlflow==3.18.0
+httpx==0.28.1
 pytest==9.1.1
+matplotlib==3.11.2
 ipykernel==7.4.0
 nbconvert==7.17.2

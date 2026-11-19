@@ -3,10 +3,10 @@
 
 Estimate a used car's listing price with a **price range**, see **why** the model gives that price, check whether an asking price is fair, and see how value changes with age and kilometres.
 
-Built on AutoScout24 listings (Audi, Opel, Renault, aged 0–3 years) with scikit-learn pipelines, LightGBM and a Streamlit app.
+Built on AutoScout24 listings (Audi, Opel, Renault, aged 0–3 years) with scikit-learn pipelines, LightGBM, a Streamlit app and a FastAPI service.
 
-> **Status: Version 2**: LightGBM with monotonic constraints, model-based price ranges (conformalized quantile regression), per-car SHAP explanations, depreciation chart.
-> Version 1 (linear model) is kept as the baseline in every comparison. Planned: v3 (FastAPI, Docker, experiment tracking).
+> **Status: Version 3 (production layer)**: FastAPI service, Docker image, MLflow experiment tracking, a retraining pipeline with a champion/challenger promotion gate, a data-drift check, and CI on GitHub Actions.
+> Version 2 brought LightGBM, model-based price ranges and SHAP explanations; Version 1 (linear model) stays as the baseline in every comparison.
 
 ## Screenshots
 
@@ -109,6 +109,37 @@ Four tabs, no sidebar, so it works on a phone as well as a desktop. Light and da
 
 Every uncertainty number on screen (range, warning, deal check) comes from the same per-car range, so the app never shows two different figures for the same thing.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph local["Your laptop (where the data lives)"]
+        CSV[("data/*.csv<br/>never committed")]
+        TRAIN["python -m src.train<br/>compare · tune · calibrate · test once"]
+        RETRAIN["python -m src.retrain<br/>challenger vs champion gate"]
+        DRIFT["python -m src.drift<br/>new data vs training profile"]
+        MLF[("MLflow<br/>mlflow.db + mlruns/")]
+        CSV --> TRAIN & RETRAIN & DRIFT
+        TRAIN --> MLF
+        RETRAIN --> MLF
+    end
+    MODELS[["models/<br/>pricing_model.joblib · metadata.json<br/>reference_profile.json · train_row_hashes.npy"]]
+    TRAIN --> MODELS
+    RETRAIN -- "only if better<br/>and ranges ≈80%" --> MODELS
+    MODELS -.-> DRIFT
+    PRED["src/predict.py<br/>one source of every number"]
+    MODELS --> PRED
+    PRED --> APP["Streamlit app<br/>streamlit_app.py"]
+    PRED --> API["FastAPI<br/>src/api.py"]
+    API --> DOCKER["Docker image"]
+    MODELS -. "git commit + push<br/>(code + model, no data)" .-> REPO[("GitHub repo")]
+    REPO --> GH["GitHub Actions CI<br/>tests + Docker smoke test<br/>every push"]
+    REPO -- "main branch only" --> CLOUD["Streamlit Community Cloud<br/>runs the live app"]
+```
+
+The app and the API both call `src/predict.py`, so they cannot give different answers (`tests/test_api.py` drives the real app and checks it shows exactly what the API returns).
+Training, retraining and drift checks run **locally**, because the dataset is not in the repository; GitHub only runs the tests.
+
 ## How it works
 
 ```
@@ -134,48 +165,140 @@ Version 1 decisions (deduplicate before splitting, log1p target, km repair, rare
 
 ```
 used-car-pricing-engine/
-├── .streamlit/config.toml   # app theme (light + dark)
-├── data/                    # CSV goes here (not committed, see data/README.md)
+├── .github/workflows/ci.yml   # tests + Docker build/smoke test on every push
+├── .streamlit/config.toml     # app theme (light + dark)
+├── data/                      # CSV goes here (never committed, see data/README.md)
+├── examples/predict_request.json
 ├── models/
-│   ├── pricing_model.joblib # PricingModel: point + 2 quantile pipelines + calibration
-│   └── metadata.json        # all results, rules and app options (source of every number above)
-├── notebooks/
-│   ├── 01_eda.ipynb         # data checks behind the cleaning decisions
-│   └── 02_modelling.ipynb   # v2: comparison, per-band errors, ranges, SHAP, depreciation
-├── reports/figures/ and reports/screenshots/
+│   ├── pricing_model.joblib   # PricingModel: point + 2 quantile pipelines + calibration
+│   ├── metadata.json          # all results, rules and app options (source of every number above)
+│   ├── reference_profile.json # training-data summary for the drift check (aggregates only)
+│   ├── train_row_hashes.npy   # fingerprints of training rows (no raw data), for a fair promotion gate
+│   └── promotion_log.jsonl    # every retraining decision and its reasons (created on first retrain)
+├── notebooks/                 # 01_eda.ipynb, 02_modelling.ipynb
+├── reports/figures/, reports/screenshots/
 ├── src/
-│   ├── config.py   cleaning.py   features.py   # settings, cleaning, preprocessing + pipelines
-│   ├── train.py                                 # compare, select, calibrate, test once, save
-│   ├── model.py                                 # PricingModel + conformal helpers
-│   ├── explain.py                               # SHAP values -> plain-language reasons
-│   ├── predict.py                               # what the app calls
-│   ├── report.py                                # writes the README results section
-│   └── evaluate.py   plot_style.py
+│   ├── config.py  cleaning.py  features.py  model.py  explain.py  evaluate.py  plot_style.py
+│   ├── train.py      # run_training(): compare, select, calibrate, test once, save, log to MLflow
+│   ├── predict.py    # what the app AND the API call
+│   ├── api.py        # FastAPI service
+│   ├── tracking.py   # MLflow logging
+│   ├── retrain.py    # retraining pipeline with the promotion gate
+│   ├── drift.py      # drift check and report
+│   └── report.py     # writes the README results section
 ├── tests/
+├── Dockerfile  .dockerignore
 ├── streamlit_app.py
-├── requirements.txt          # app + training (pinned)
-├── requirements-dev.txt      # + pytest and notebook tools
-└── packages.txt              # system library LightGBM needs on Streamlit Cloud
+├── requirements.txt       # the Streamlit app (used by Streamlit Cloud)
+├── requirements-api.txt   # the API (used by the Docker image)
+├── requirements-dev.txt   # everything: app + API + MLflow + pytest + notebooks
+├── packages.txt           # system library LightGBM needs on Streamlit Cloud
+└── LICENSE                # MIT, code only
 ```
 
 ## Run it locally (Windows)
 
-Requires **Python 3.12 or newer**.
-
-- `requirements.txt`: what the app needs (also used by Streamlit Cloud).
-- `requirements-dev.txt`: everything above **plus pytest and the notebook tools**. Install this one to run the tests.
+Requires **Python 3.12 or newer**. All commands are for Command Prompt, run from the project folder.
 
 ```bat
-cd "D:\DS Projects\used-car-pricing-engine"
+cd /d "D:\DS Projects\used-car-pricing-engine"
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements-dev.txt
-
-python -m src.train          :: retrain (needs data\Car_Price_data.csv, about 5 minutes)
-python -m src.report         :: refresh the README results from the saved metadata
-python -m pytest             :: run tests
-streamlit run streamlit_app.py   :: the app file is streamlit_app.py (there is no app.py)
 ```
+
+| What | Command |
+|---|---|
+| Run the tests | `python -m pytest` |
+| Streamlit app | `streamlit run streamlit_app.py` (the app file is `streamlit_app.py`; there is no `app.py`) |
+| API (no Docker) | `uvicorn src.api:app --port 8000` then open http://127.0.0.1:8000/docs |
+| Full training run (about 5 min) | `python -m src.train` |
+| Retrain with the promotion gate | `python -m src.retrain --data data\new_listings.csv` |
+| Drift check | `python -m src.drift --new data\new_listings.csv` |
+| MLflow UI | `set MLFLOW_DISABLE_TELEMETRY=true` then `mlflow ui --backend-store-uri sqlite:///mlflow.db` |
+| Refresh README results | `python -m src.report` |
+
+## Version 3: the production layer
+
+### API (FastAPI)
+
+```bat
+uvicorn src.api:app --port 8000
+```
+Open **http://127.0.0.1:8000/docs**: every endpoint has a "Try it out" button. Stop the server with Ctrl+C.
+
+| Endpoint | What it returns |
+|---|---|
+| `GET /health` | status, which model is loaded, its test error |
+| `GET /options` | allowed values for every field (models, categories, ranges, equipment) |
+| `POST /predict` | estimate, likely range, high-price warning, deal verdict (if `asking_price` is given), top 5 reasons |
+
+Only `make_model`, `age` and `km` are required; anything you leave out is filled with that model's typical values (as the app pre-fills its form) and listed in `filled_fields`.
+Inputs are checked with Pydantic against the same limits as the app: unknown models or categories, values outside the training range (e.g. age 6) and misspelt field names all come back as a `422` that lists **every** problem in plain words.
+
+From a second Command Prompt window (Windows 10/11 include `curl`):
+```bat
+curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d @examples\predict_request.json
+```
+
+### Docker (Docker Desktop on Windows)
+
+1. Start **Docker Desktop** and wait until it shows *Engine running*.
+2. Build the image (first time takes a few minutes):
+   ```bat
+   docker build -t used-car-pricing-api .
+   ```
+3. Run it:
+   ```bat
+   docker run --rm -p 8000:8000 used-car-pricing-api
+   ```
+4. Open **http://localhost:8000/docs**. Stop it with Ctrl+C.
+
+The image contains Python 3.12, the API's libraries, `src/` and the two model files only: no data, no notebooks, no training tools (see `.dockerignore`). It runs as a normal user and has a health check.
+Docker is optional: the API runs the same way without it (previous section).
+
+### Experiment tracking (MLflow)
+
+Every run of `python -m src.train` or `python -m src.retrain` is logged to a local MLflow store (`mlflow.db` plus the `mlruns/` folder; both stay on your laptop and are git-ignored):
+parameters (chosen model and settings, data split, library versions), cross-validation results for every compared model, test results, range coverage per band, training time, the data file's name and SHA-256 fingerprint, and the model files themselves.
+
+```bat
+set MLFLOW_DISABLE_TELEMETRY=true
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+Open **http://127.0.0.1:5000**, click **Model training** (top left; MLflow opens on its GenAI view), then the **used-car-pricing** experiment to see the runs. Tick two runs and click **Compare** to see what changed.
+MLflow 3 sends anonymous usage telemetry by default; the project's code switches it off, and the `set` line does the same for the UI.
+
+### Retraining with a promotion gate
+
+```bat
+python -m src.retrain --data data\new_listings.csv
+```
+1. A **challenger** is trained on the new data (the champion's tuned settings, about 2 minutes; add `--tune` for a full search) and saved in `models/candidates/<time>/`.
+2. The evaluation set is the new data's test split **minus every row the champion was trained on** (checked against `train_row_hashes.npy`), so neither model has seen any evaluation row.
+3. The challenger replaces the champion only if its average % error is at least **0.05 points lower** *and* its price ranges cover **75–85%** of real prices. With fewer than 500 unseen rows there is no fair comparison, so the champion stays.
+4. The decision and its reasons are appended to `models/promotion_log.jsonl` and tagged on the challenger's MLflow run. On promotion, the old champion is archived in `models/archive/` and the README results are refreshed.
+
+Add `--dry-run` to see the decision without replacing anything. A promoted model goes live only when you commit `models/` and merge to `main`.
+
+### Drift check
+
+```bat
+python -m src.drift --new data\new_listings.csv
+```
+Compares the new CSV with the training data's saved profile, feature by feature, using the **Population Stability Index** (below 0.10 stable, 0.10–0.25 moderate, above 0.25 large), plus the median price and the share of rows the model has never seen (e.g. age above 3, an unknown model).
+It prints a verdict and writes a short report to `reports/drift/`:
+- **RETRAIN RECOMMENDED**: price level moved more than 5%, a large shift (PSI above 0.25), or more than 2% of rows outside what the model has seen
+- **WATCH**: moderate shifts, or a feature's median moved more than 20%
+- **OK**: nothing notable
+
+### Continuous integration (GitHub Actions)
+
+`.github/workflows/ci.yml` runs on every push and pull request (free for public repositories):
+- **Tests** on Python 3.12. Tests that need the CSV skip cleanly because the data is not in the repository; the job also fails if any CSV file is ever committed.
+- **Docker**: builds the image, starts it and checks `/health`, a real `/predict` request and a rejected bad request.
+
+CI never trains or deploys. Retraining runs locally, where the data lives; publishing a new model is a commit to `main`.
 
 ## Deploy free on Streamlit Community Cloud
 
@@ -193,3 +316,7 @@ streamlit run streamlit_app.py   :: the app file is streamlit_app.py (there is n
 ## Data
 
 Course-provided (upGrad / IIIT Bangalore), originally AutoScout24 listings. No redistribution licence, so the CSV is not included. See `data/README.md`.
+
+## License
+
+The **code** is released under the [MIT License](LICENSE). The licence does not cover the dataset, which is not included in this repository.

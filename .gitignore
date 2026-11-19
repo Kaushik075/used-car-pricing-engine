@@ -1,6 +1,22 @@
 # Course-provided data: not ours to publish. See data/README.md.
 data/*
 !data/README.md
+# ...and no CSV anywhere else in the repo either (e.g. a copy dropped in the project root)
+*.csv
+
+# Experiment tracking and retraining outputs (local only)
+mlflow.db
+mlruns/
+mlartifacts/
+models/candidates/
+reports/drift/
+
+# Secrets: never commit
+.env
+.env.*
+.streamlit/secrets.toml
+*.pem
+*.key
 
 # Python
 __pycache__/
