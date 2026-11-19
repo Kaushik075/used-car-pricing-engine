@@ -113,31 +113,9 @@ Every uncertainty number on screen (range, warning, deal check) comes from the s
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph local["Your laptop (where the data lives)"]
-        CSV[("data/*.csv<br/>never committed")]
-        TRAIN["python -m src.train<br/>compare · tune · calibrate · test once"]
-        RETRAIN["python -m src.retrain<br/>challenger vs champion gate"]
-        DRIFT["python -m src.drift<br/>new data vs training profile"]
-        MLF[("MLflow<br/>mlflow.db + mlruns/")]
-        CSV --> TRAIN & RETRAIN & DRIFT
-        TRAIN --> MLF
-        RETRAIN --> MLF
-    end
-    MODELS[["models/<br/>pricing_model.joblib · metadata.json<br/>reference_profile.json · train_row_hashes.npy"]]
-    TRAIN --> MODELS
-    RETRAIN -- "only if better<br/>and ranges ≈80%" --> MODELS
-    MODELS -.-> DRIFT
-    PRED["src/predict.py<br/>one source of every number"]
-    MODELS --> PRED
-    PRED --> APP["Streamlit app<br/>streamlit_app.py"]
-    PRED --> API["FastAPI<br/>src/api.py"]
-    API --> DOCKER["Docker image"]
-    MODELS -. "git commit + push<br/>(code + model, no data)" .-> REPO[("GitHub repo")]
-    REPO --> GH["GitHub Actions CI<br/>tests + Docker smoke test<br/>every push"]
-    REPO -- "main branch only" --> CLOUD["Streamlit Community Cloud<br/>runs the live app"]
-```
+![Architecture: training, retraining and drift checks run on your laptop where the data lives; the saved model feeds src/predict.py, which serves the Streamlit app and the FastAPI service; GitHub runs CI and Streamlit Cloud serves the live app from main](docs/architecture.png)
+
+<sub>Diagram source: [`docs/architecture.mmd`](docs/architecture.mmd) (Mermaid). Tap the image to zoom on a phone.</sub>
 
 The app and the API both call `src/predict.py`, so they cannot give different answers (`tests/test_api.py` drives the real app and checks it shows exactly what the API returns).
 Training, retraining and drift checks run **locally**, because the dataset is not in the repository; GitHub only runs the tests.
@@ -169,6 +147,7 @@ Version 1 decisions (deduplicate before splitting, log1p target, km repair, rare
 used-car-pricing-engine/
 ├── .github/workflows/ci.yml   # tests + Docker build/smoke test on every push
 ├── .streamlit/config.toml     # app theme (light + dark)
+├── docs/                      # architecture.png (shown above) + architecture.mmd (its Mermaid source)
 ├── data/                      # CSV goes here (never committed, see data/README.md)
 ├── examples/predict_request.json
 ├── models/
@@ -187,10 +166,11 @@ used-car-pricing-engine/
 │   ├── tracking.py   # MLflow logging
 │   ├── retrain.py    # retraining pipeline with the promotion gate
 │   ├── drift.py      # drift check and report
-│   └── report.py     # writes the README results section
+│   └── report.py     # writes the README results section and MODEL_CARD.md
 ├── tests/
 ├── Dockerfile  .dockerignore
 ├── streamlit_app.py
+├── MODEL_CARD.md          # generated from models/metadata.json by src/report.py
 ├── requirements.txt       # the Streamlit app (used by Streamlit Cloud)
 ├── requirements-api.txt   # the API (used by the Docker image)
 ├── requirements-dev.txt   # everything: app + API + MLflow + pytest + notebooks

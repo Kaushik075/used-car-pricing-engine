@@ -1,0 +1,23 @@
+flowchart LR
+    subgraph local["Your laptop (where the data lives)"]
+        CSV[("data/*.csv<br/>never committed")]
+        TRAIN["python -m src.train<br/>compare · tune · calibrate · test once"]
+        RETRAIN["python -m src.retrain<br/>challenger vs champion gate"]
+        DRIFT["python -m src.drift<br/>new data vs training profile"]
+        MLF[("MLflow<br/>mlflow.db + mlruns/")]
+        CSV --> TRAIN & RETRAIN & DRIFT
+        TRAIN --> MLF
+        RETRAIN --> MLF
+    end
+    MODELS[["models/<br/>pricing_model.joblib · metadata.json<br/>reference_profile.json · train_row_hashes.npy"]]
+    TRAIN --> MODELS
+    RETRAIN -- "only if better<br/>and ranges ≈80%" --> MODELS
+    MODELS -.-> DRIFT
+    PRED["src/predict.py<br/>one source of every number"]
+    MODELS --> PRED
+    PRED --> APP["Streamlit app<br/>streamlit_app.py"]
+    PRED --> API["FastAPI<br/>src/api.py"]
+    API --> DOCKER["Docker image"]
+    MODELS -. "git commit + push<br/>(code + model, no data)" .-> REPO[("GitHub repo")]
+    REPO --> GH["GitHub Actions CI<br/>tests + Docker smoke test<br/>every push"]
+    REPO -- "main branch only" --> CLOUD["Streamlit Community Cloud<br/>runs the live app"]
