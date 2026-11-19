@@ -1,5 +1,5 @@
 # Used Car Pricing Engine
-**Live app:** https://used-car-pricing.streamlit.app/
+**Live app:** https://used-car-pricing.streamlit.app/ · **Model card:** [MODEL_CARD.md](MODEL_CARD.md) (what the model is for, its data, accuracy and limits)
 
 Estimate a used car's listing price with a **price range**, see **why** the model gives that price, check whether an asking price is fair, and see how value changes with age and kilometres.
 
@@ -96,6 +96,8 @@ High-price warning: shown above €21,900 (75th percentile of training prices), 
 - All cars are 0–3 years old.
 
 Model file: 5.7 MB (three LightGBM models). Library versions: scikit-learn 1.9.1, LightGBM 4.7.0.
+
+Full details, intended use and limits: [MODEL_CARD.md](MODEL_CARD.md).
 <!-- RESULTS:END -->
 
 ## What the app does
@@ -196,27 +198,49 @@ used-car-pricing-engine/
 └── LICENSE                # MIT, code only
 ```
 
-## Run it locally (Windows)
+## Run it yourself
 
-Requires **Python 3.12 or newer**. All commands are for Command Prompt, run from the project folder.
+You need **Python 3.12 or newer** and **git**. You do **not** need the dataset to run the app, the API or the tests: the trained model is in `models/`.
 
+**1. Download the project and install it**
+
+Windows (Command Prompt):
 ```bat
-cd /d "D:\DS Projects\used-car-pricing-engine"
+git clone https://github.com/Kaushik075/used-car-pricing-engine.git
+cd used-car-pricing-engine
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements-dev.txt
 ```
 
-| What | Command |
-|---|---|
-| Run the tests | `python -m pytest` |
-| Streamlit app | `streamlit run streamlit_app.py` (the app file is `streamlit_app.py`; there is no `app.py`) |
-| API (no Docker) | `uvicorn src.api:app --port 8000` then open http://127.0.0.1:8000/docs |
-| Full training run (about 5 min) | `python -m src.train` |
-| Retrain with the promotion gate | `python -m src.retrain --data data\new_listings.csv` |
-| Drift check | `python -m src.drift --new data\new_listings.csv` |
-| MLflow UI | `set MLFLOW_DISABLE_TELEMETRY=true` then `mlflow ui --backend-store-uri sqlite:///mlflow.db` |
-| Refresh README results | `python -m src.report` |
+Mac / Linux (Terminal):
+```bash
+git clone https://github.com/Kaushik075/used-car-pricing-engine.git
+cd used-car-pricing-engine
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+On a Mac, LightGBM also needs OpenMP: `brew install libomp`. On a minimal Linux, `sudo apt install libgomp1` if LightGBM fails to import.
+
+The only differences between systems are the two activation lines above and setting an environment variable (MLflow row below). Every other command is the same everywhere; paths use `/`, which works on Windows too.
+
+**2. Run it** (from the project folder, with the virtual environment active)
+
+| What | Command | Needs the CSV? |
+|---|---|---|
+| Run the tests | `python -m pytest` | No (tests that need it are skipped) |
+| Streamlit app | `streamlit run streamlit_app.py` | No |
+| API (no Docker) | `uvicorn src.api:app --port 8000`, then open http://127.0.0.1:8000/docs | No |
+| Full training run (about 5 min) | `python -m src.train` | **Yes** |
+| Retrain with the promotion gate | `python -m src.retrain --data data/new_listings.csv` | **Yes** (plus your new data) |
+| Drift check | `python -m src.drift --new data/new_listings.csv` | Your new data only |
+| MLflow UI | Windows: `set MLFLOW_DISABLE_TELEMETRY=true` · Mac/Linux: `export MLFLOW_DISABLE_TELEMETRY=true`, then `mlflow ui --backend-store-uri sqlite:///mlflow.db` | No (shows runs you have made) |
+| Refresh README results and model card | `python -m src.report` | No |
+
+**3. Training needs your own copy of the data**
+
+The dataset is not in this repository (no redistribution licence; see [Data](#data)). To train or retrain, get your own copy of `Car_Price_data.csv` and put it at `data/Car_Price_data.csv`. Every `*.csv` is git-ignored, so it can't be committed by accident.
 
 ## Version 3: the production layer
 
@@ -236,12 +260,12 @@ Open **http://127.0.0.1:8000/docs**: every endpoint has a "Try it out" button. S
 Only `make_model`, `age` and `km` are required; anything you leave out is filled with that model's typical values (as the app pre-fills its form) and listed in `filled_fields`.
 Inputs are checked with Pydantic against the same limits as the app: unknown models or categories, values outside the training range (e.g. age 6) and misspelt field names all come back as a `422` that lists **every** problem in plain words.
 
-From a second Command Prompt window (Windows 10/11 include `curl`):
+From a second terminal window (Windows 10/11, Mac and Linux all include `curl`):
 ```bat
-curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d @examples\predict_request.json
+curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" -d @examples/predict_request.json
 ```
 
-### Docker (Docker Desktop on Windows)
+### Docker (Docker Desktop on Windows or Mac; Docker Engine on Linux)
 
 1. Start **Docker Desktop** and wait until it shows *Engine running*.
 2. Build the image (first time takes a few minutes):
@@ -259,11 +283,12 @@ Docker is optional: the API runs the same way without it (previous section).
 
 ### Experiment tracking (MLflow)
 
-Every run of `python -m src.train` or `python -m src.retrain` is logged to a local MLflow store (`mlflow.db` plus the `mlruns/` folder; both stay on your laptop and are git-ignored):
+Every run of `python -m src.train` or `python -m src.retrain` is logged to a local MLflow store (`mlflow.db` plus the `mlruns/` folder; both stay on your machine and are git-ignored):
 parameters (chosen model and settings, data split, library versions), cross-validation results for every compared model, test results, range coverage per band, training time, the data file's name and SHA-256 fingerprint, and the model files themselves.
 
 ```bat
 set MLFLOW_DISABLE_TELEMETRY=true
+REM Mac/Linux: export MLFLOW_DISABLE_TELEMETRY=true
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 ```
 Open **http://127.0.0.1:5000**, click **Model training** (top left; MLflow opens on its GenAI view), then the **used-car-pricing** experiment to see the runs. Tick two runs and click **Compare** to see what changed.
@@ -272,7 +297,7 @@ MLflow 3 sends anonymous usage telemetry by default; the project's code switches
 ### Retraining with a promotion gate
 
 ```bat
-python -m src.retrain --data data\new_listings.csv
+python -m src.retrain --data data/new_listings.csv
 ```
 1. A **challenger** is trained on the new data (the champion's tuned settings, about 2 minutes; add `--tune` for a full search) and saved in `models/candidates/<time>/`.
 2. The evaluation set is the new data's test split **minus every row the champion was trained on** (checked against `train_row_hashes.npy`), so neither model has seen any evaluation row.
@@ -284,7 +309,7 @@ Add `--dry-run` to see the decision without replacing anything. A promoted model
 ### Drift check
 
 ```bat
-python -m src.drift --new data\new_listings.csv
+python -m src.drift --new data/new_listings.csv
 ```
 Compares the new CSV with the training data's saved profile, feature by feature, using the **Population Stability Index** (below 0.10 stable, 0.10–0.25 moderate, above 0.25 large), plus the median price and the share of rows the model has never seen (e.g. age above 3, an unknown model).
 It prints a verdict and writes a short report to `reports/drift/`:

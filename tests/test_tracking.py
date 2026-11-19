@@ -1,6 +1,6 @@
 """MLflow logging, using the committed model: runs everywhere, including CI.
 
-The temporary folder name contains a space on purpose, like "D:\\DS Projects\\...".
+The temporary folder name contains a space on purpose, like "C:\\My Projects\\..." on Windows.
 """
 import json
 
@@ -13,7 +13,7 @@ from src.tracking import log_training_run, tag_run
 
 @pytest.fixture
 def store(tmp_path):
-    root = tmp_path / "DS Projects"
+    root = tmp_path / "My Projects"
     root.mkdir()
     return f"sqlite:///{(root / 'mlflow.db').as_posix()}", root / "mlruns"
 
