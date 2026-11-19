@@ -1,0 +1,20 @@
+# Keep the image small and free of data/secrets: only src/ and the model files are copied.
+data/
+mlruns/
+mlflow.db
+mlartifacts/
+models/candidates/
+models/archive/
+notebooks/
+reports/
+tests/
+.git/
+.github/
+.venv/
+venv/
+.devcontainer/
+.streamlit/
+**/__pycache__/
+*.pyc
+.env
+.env.*

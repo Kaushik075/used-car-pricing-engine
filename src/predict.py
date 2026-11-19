@@ -67,6 +67,49 @@ def is_high_price(est: float, rules: dict) -> bool:
     return rules["show_high_price_warning"] and est > rules["high_price_threshold"]
 
 
+def eur(x: float) -> str:
+    return f"€{x:,.0f}"
+
+
+def high_price_note(est: float, low: float, high: float, rules: dict) -> str | None:
+    """The high-price warning text, or None when no warning applies.
+
+    One function for the app and the API, built from THIS car's own range.
+    """
+    if not is_high_price(est, rules):
+        return None
+    lo_pct, hi_pct = range_pct(est, low, high)
+    return (
+        f"High-priced car: above {eur(rules['high_price_threshold'])} the model has fewer examples, "
+        f"so ranges are wider. This car's range is {lo_pct:+.0f}% to {hi_pct:+.0f}% around the estimate."
+    )
+
+
+def price_report(car: dict, asking_price: float | None = None, top_n: int = 5) -> dict:
+    """Everything the app shows for one car, in one dictionary (used by the API).
+
+    estimate + range, the high-price warning, the deal verdict (if an asking price is
+    given) and the top reasons. Built only from the functions above, so the API and
+    the Streamlit app always show the same numbers.
+    """
+    e = estimate(car)
+    est, low, high = e["estimate"], e["low"], e["high"]
+    lo_pct, hi_pct = range_pct(est, low, high)
+    ex = explain(car, top_n=top_n)
+    deal = None
+    if asking_price is not None:
+        d = deal_check(asking_price, est, low, high)
+        deal = {"verdict": d["verdict"], "asking_price": float(asking_price), "gap_pct": d["gap_pct"]}
+    return {
+        "estimate": est,
+        "range": {"low": low, "high": high, "low_pct": lo_pct, "high_pct": hi_pct},
+        "high_price_warning": high_price_note(est, low, high, load_metadata()["rules"]),
+        "deal": deal,
+        "baseline": ex["baseline"],
+        "reasons": [{"reason": r.reason, "effect_pct": r.effect_pct} for r in ex["reasons"].itertuples()],
+    }
+
+
 def deal_check(asking_price: float, est: float, low: float, high: float) -> dict:
     """Place an asking price against this car's likely range.
 

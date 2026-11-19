@@ -12,10 +12,17 @@ Order of work (each step only sees what it is allowed to see):
     4. price ranges: fit 10% / 90% quantile models, then conformal calibration
        per price band on their OOF predictions (still TRAIN only)
     5. refit everything on all of TRAIN, score ONCE on TEST, save model + metadata
+    6. (Version 3) save a drift reference profile and training-row fingerprints,
+       and log the whole run to MLflow
+
+`run_training()` is reused by the retraining pipeline (src/retrain.py).
 """
+import argparse
+import hashlib
 import json
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import joblib
 import lightgbm
@@ -31,24 +38,29 @@ from sklearn.model_selection import (
     KFold,
     RandomizedSearchCV,
     cross_val_predict,
+    cross_validate,
     train_test_split,
 )
 
-from src.cleaning import clean, cleaning_report, load_raw
+from src.cleaning import clean, cleaning_report, load_raw, row_hashes
 from src.config import (
     CATEGORICAL_COLUMNS,
     CV_FOLDS,
     FEATURE_COLUMNS,
+    DATA_PATH,
+    HASHES_FILE,
     LIST_COLUMNS,
-    METADATA_PATH,
+    METADATA_FILE,
     MIN_CATEGORY_COUNT,
     MODEL_DIR,
+    MODEL_FILE,
     NUMERIC_COLUMNS,
-    PIPELINE_PATH,
+    PROFILE_FILE,
     RANDOM_STATE,
     TARGET,
     TEST_SIZE,
 )
+from src.drift import build_reference_profile
 from src.evaluate import regression_metrics
 from src.features import FeatureListBinarizer, build_linear_pipeline, build_tree_pipeline
 from src.model import (
@@ -251,33 +263,83 @@ def records(df: pd.DataFrame) -> list:
     return df.reset_index().to_dict(orient="records")
 
 
-def main():
-    raw = load_raw()
+def fixed_settings_table(X_train, y_train, tree_params: dict, lasso_alpha: float):
+    """Retraining without a new search: cross-validate the champion's settings on the new data.
+
+    Returns the same kind of table as compare_models, plus the unfitted pipelines.
+    """
+    candidates = {
+        "lightgbm": (build_tree_pipeline(lgbm(**tree_params)), tree_params),
+        "lasso": (build_linear_pipeline(Lasso(alpha=lasso_alpha, max_iter=20_000)), {"alpha": lasso_alpha}),
+    }
+    rows, pipes = [], {}
+    for name, (pipe, params) in candidates.items():
+        t0 = time.time()
+        res = cross_validate(pipe, X_train, y_train, cv=CV, scoring=SCORING, n_jobs=2)
+        rows.append({
+            "model": name,
+            "family": "linear" if name == "lasso" else "boosting",
+            "cv_mape_pct": -res["test_mape"].mean() * 100,
+            "cv_mape_std": res["test_mape"].std() * 100,
+            "cv_mae_eur": -res["test_mae"].mean(),
+            "cv_r2": res["test_r2"].mean(),
+            "search_minutes": (time.time() - t0) / 60,
+            "best_params": json.dumps(params),
+        })
+        pipes[name] = pipe
+    return pd.DataFrame(rows).set_index("model").sort_values("cv_mape_pct"), pipes
+
+
+def file_sha256(path) -> str:
+    """Fingerprint of the data file, so every saved model and MLflow run says which data trained it."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def run_training(data_path=DATA_PATH, model_dir=MODEL_DIR, tune=True, fixed_params=None,
+                 track=True, run_name="train", tags=None) -> dict:
+    """Train, calibrate, test once and save a complete model folder. Returns the metadata.
+
+    tune=True        full model comparison and hyper-parameter search (about 5 minutes)
+    tune=False       reuse `fixed_params` = {"lightgbm": {...}, "lasso_alpha": a} (about 1-2 minutes);
+                     used by the retraining pipeline to refit the champion's recipe on new data
+    track=True       log the run (parameters, CV and test results, model files) to MLflow
+    """
+    model_dir = Path(model_dir)
+    t_start = time.time()
+    raw = load_raw(data_path)
     df = clean(raw)
     X_train, X_test, y_train, y_test = split_data(df)
     edges = band_edges_from(y_train)
     print(f"Train rows: {len(X_train):,}  Test rows: {len(X_test):,}  Price bands: {band_labels(edges)}")
 
     # ---- 2. compare and select (TRAIN only)
-    table, searches = compare_models(X_train, y_train)
-    selected = select_model(table)
-    best_linear = table[table.family == "linear"].index[0]
+    if tune:
+        table, searches = compare_models(X_train, y_train)
+        selected = select_model(table)
+        best_linear = table[table.family == "linear"].index[0]
+        point_unfitted = searches[selected].best_estimator_
+        linear_unfitted = searches[best_linear].best_estimator_
+        tree_params = {k.split("__")[-1]: v for k, v in searches[selected].best_params_.items()}
+    else:
+        tree_params = dict(fixed_params["lightgbm"])
+        table, pipes = fixed_settings_table(X_train, y_train, tree_params, fixed_params["lasso_alpha"])
+        selected, best_linear = "lightgbm", "lasso"
+        point_unfitted, linear_unfitted = pipes["lightgbm"], pipes["lasso"]
     print("\nCross-validation (train only):\n", table.drop(columns="best_params").round(3).to_string())
     print(f"\nSelected: {selected}   (best linear: {best_linear})")
     if selected != "lightgbm":
         raise SystemExit("Explanations and ranges are built on LightGBM; revisit if another model wins.")
-
-    point_unfitted = searches[selected].best_estimator_
-    linear_unfitted = searches[best_linear].best_estimator_
-    tree_params = {k.split("__")[-1]: v for k, v in searches[selected].best_params_.items()}
 
     # ---- 3. out-of-fold predictions: errors per band before (linear) / after (boosting)
     oof_point = cross_val_predict(point_unfitted, X_train, y_train, cv=CV, n_jobs=2)
     oof_linear = cross_val_predict(linear_unfitted, X_train, y_train, cv=CV, n_jobs=2)
     cv_bands = {"linear": errors_by_band(y_train, oof_linear, edges),
                 "boosting": errors_by_band(y_train, oof_point, edges)}
-    print("\nCV errors by actual-price band, linear:\n", cv_bands["linear"].round(2).to_string())
-    print("CV errors by actual-price band, boosting:\n", cv_bands["boosting"].round(2).to_string())
+    print("\nCV errors by actual-price band, boosting:\n", cv_bands["boosting"].round(2).to_string())
 
     # ---- 4. price ranges: quantile models + per-band conformal calibration on OOF predictions
     lower_unfitted = quantile_model(tree_params, QUANTILES[0])
@@ -288,7 +350,6 @@ def main():
     scores = conformity_scores(y_train.to_numpy(float), oof_lo, oof_hi)
     oof_band = assign_band(oof_point, edges)
     corrections = [conformal_correction(scores[oof_band == b]) for b in range(len(edges) + 1)]
-    print("\nRaw quantile-model coverage (OOF, before calibration):\n", raw_cov.round(3).to_string())
     print("Conformal corrections per band (log scale):", np.round(corrections, 4))
 
     # ---- 5. final fit on all TRAIN, then the single test evaluation
@@ -310,7 +371,6 @@ def main():
     test_cov = coverage_table(y_test, low, high, est, edges)
     print("\nTest, boosting:", {k: round(v, 3) for k, v in test_metrics.items()})
     print("Test, linear:  ", {k: round(v, 3) for k, v in test_metrics_linear.items()})
-    print("Test errors by band, boosting:\n", test_bands["boosting"].round(2).to_string())
     print("Test range coverage:\n", test_cov.round(3).to_string())
 
     # Version 1's weakest spot: the most expensive cars (test set, both models)
@@ -319,7 +379,6 @@ def main():
     for name, p in [("linear", lin_test), ("boosting", est)]:
         rel = (p[top] - y_test.to_numpy(float)[top]) / y_test.to_numpy(float)[top] * 100
         top_end[name] = {"share_under_estimated": float(np.mean(rel < 0)), "median_bias_pct": float(np.median(rel))}
-    print("Cars over EUR 40k (test):", top_end)
 
     # High-price warning: keep it only if the data still shows less certainty above the threshold.
     threshold = float(np.percentile(y_train, 75))
@@ -333,14 +392,21 @@ def main():
     }
     rules["show_high_price_warning"] = rules["oof_mean_width_pct"]["high"] > rules["oof_mean_width_pct"]["normal"]
 
-    # ---- save
-    MODEL_DIR.mkdir(exist_ok=True)
-    joblib.dump(model, PIPELINE_PATH, compress=3)
+    # ---- save the model folder
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_path = model_dir / MODEL_FILE
+    joblib.dump(model, model_path, compress=3)
+    # Fingerprints of the training rows: lets the promotion gate prove a test row was never trained on.
+    np.save(model_dir / HASHES_FILE, row_hashes(pd.concat([X_train, y_train], axis=1)))
+    # Summary of the training data for the drift check (aggregates only, no rows).
+    (model_dir / PROFILE_FILE).write_text(json.dumps(build_reference_profile(X_train, y_train), indent=1))
     metadata = {
         "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "versions": {"sklearn": sklearn.__version__, "lightgbm": lightgbm.__version__},
+        "data_file": {"name": Path(data_path).name, "sha256": file_sha256(data_path)},
         "data": {**cleaning_report(raw, df), **data_facts(df)},
         "split": {"train_rows": len(X_train), "test_rows": len(X_test), "random_state": RANDOM_STATE},
+        "training_mode": "full search" if tune else "champion settings refit",
         "band_edges": edges,
         "band_labels": band_labels(edges),
         "selected_model": selected,
@@ -359,11 +425,30 @@ def main():
         "test_range_coverage": records(test_cov),
         "test_top_end": top_end,
         "rules": rules,
-        "model_file_kb": round(PIPELINE_PATH.stat().st_size / 1024, 1),
+        "model_file_kb": round(model_path.stat().st_size / 1024, 1),
+        "training_minutes": round((time.time() - t_start) / 60, 2),
         "app": app_options(X_train),
     }
-    METADATA_PATH.write_text(json.dumps(metadata, indent=2, default=str))
-    print(f"\nSaved {PIPELINE_PATH.name} ({metadata['model_file_kb']} KB) and {METADATA_PATH.name}")
+    (model_dir / METADATA_FILE).write_text(json.dumps(metadata, indent=2, default=str))
+    print(f"\nSaved {MODEL_FILE} ({metadata['model_file_kb']} KB), {METADATA_FILE}, {PROFILE_FILE}, "
+          f"{HASHES_FILE} to {model_dir}")
+
+    if track:
+        from src.tracking import log_training_run  # imported here: the API and app never need MLflow
+
+        metadata["mlflow_run_id"] = log_training_run(metadata, model_dir, run_name=run_name, tags=tags)
+        (model_dir / METADATA_FILE).write_text(json.dumps(metadata, indent=2, default=str))
+        print(f"Logged to MLflow, run id {metadata['mlflow_run_id']}")
+    return metadata
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Train the pricing model (full search) and save it.")
+    parser.add_argument("--data", default=str(DATA_PATH), help="CSV to train on (default: data/Car_Price_data.csv)")
+    parser.add_argument("--model-dir", default=str(MODEL_DIR), help="folder to save the model in (default: models/)")
+    parser.add_argument("--no-mlflow", action="store_true", help="skip experiment tracking")
+    args = parser.parse_args()
+    run_training(args.data, args.model_dir, tune=True, track=not args.no_mlflow)
 
 
 if __name__ == "__main__":

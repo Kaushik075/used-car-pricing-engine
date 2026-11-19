@@ -1,8 +1,12 @@
 {
-  "trained_at": "2026-11-18T04:56:44+00:00",
+  "trained_at": "2026-11-18T07:00:33+00:00",
   "versions": {
     "sklearn": "1.9.1",
     "lightgbm": "4.7.0"
+  },
+  "data_file": {
+    "name": "Car_Price_data.csv",
+    "sha256": "06531d961b4ed8fb4d686250c3dc54ce6b1f0669e30331e953358117f67838c1"
   },
   "data": {
     "raw_rows": 15915,
@@ -27,6 +31,7 @@
     "test_rows": 2849,
     "random_state": 42
   },
+  "training_mode": "full search",
   "band_edges": [
     11490.0,
     15500.0,
@@ -51,7 +56,7 @@
       "cv_mape_std": 0.08998263634586588,
       "cv_mae_eur": 952.6819872391728,
       "cv_r2": 0.956994950833314,
-      "search_minutes": 3.454244156678518,
+      "search_minutes": 3.524805466334025,
       "best_params": "{\"min_samples_leaf\": 10, \"max_leaf_nodes\": 63, \"max_iter\": 1000, \"max_features\": 0.7, \"learning_rate\": 0.03, \"l2_regularization\": 1.0}"
     },
     {
@@ -61,7 +66,7 @@
       "cv_mape_std": 0.0986062549523679,
       "cv_mae_eur": 965.112580066471,
       "cv_r2": 0.9550319250184707,
-      "search_minutes": 1.087647545337677,
+      "search_minutes": 1.1161249240239461,
       "best_params": "{\"reg_lambda\": 1.0, \"num_leaves\": 63, \"n_estimators\": 1000, \"min_child_samples\": 10, \"learning_rate\": 0.03, \"colsample_bytree\": 1.0}"
     },
     {
@@ -71,7 +76,7 @@
       "cv_mape_std": 0.24917336967239678,
       "cv_mae_eur": 1459.5088887101394,
       "cv_r2": 0.9072967444730485,
-      "search_minutes": 0.12312537431716919,
+      "search_minutes": 0.12357345024744669,
       "best_params": "{\"alpha\": 0.0001}"
     },
     {
@@ -81,7 +86,7 @@
       "cv_mape_std": 0.24472846132285142,
       "cv_mae_eur": 1460.313927581792,
       "cv_r2": 0.9077747716324044,
-      "search_minutes": 0.1234609882036845,
+      "search_minutes": 0.12677199840545655,
       "best_params": "{\"alpha\": 1}"
     }
   ],
@@ -391,6 +396,7 @@
     "show_high_price_warning": true
   },
   "model_file_kb": 5815.7,
+  "training_minutes": 5.6,
   "app": {
     "categories": {
       "make_model": [

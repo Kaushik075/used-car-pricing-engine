@@ -5,6 +5,7 @@ Anything that learns a value (a median, a list of frequent categories)
 lives inside the scikit-learn pipeline in features.py, so it is learned
 from training rows only.
 """
+import numpy as np  # noqa: F401  (type hint below)
 import pandas as pd
 
 from src.config import DATA_PATH, TARGET
@@ -41,3 +42,13 @@ def cleaning_report(raw: pd.DataFrame, cleaned: pd.DataFrame) -> dict:
         "clean_rows": int(len(cleaned)),
         "missing_values": int(cleaned.isna().sum().sum()),
     }
+
+
+def row_hashes(df: pd.DataFrame) -> "np.ndarray":
+    """One 64-bit fingerprint per row (same values -> same fingerprint).
+
+    Saved with each model so the retraining pipeline can tell which rows a model
+    was trained on, without storing any raw data.
+    """
+    cols = sorted(df.columns)
+    return pd.util.hash_pandas_object(df[cols], index=False).to_numpy()
